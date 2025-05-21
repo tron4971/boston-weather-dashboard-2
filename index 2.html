@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Boston Weather & Flood Forecast Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f5f7fa;
+    }
+    header {
+      background: #003366;
+      color: white;
+      padding: 10px;
+      text-align: center;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      padding: 10px;
+      gap: 20px;
+      justify-content: center;
+    }
+    .widget {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      overflow: hidden;
+      width: 650px;
+    }
+    iframe, img {
+      width: 100%;
+      height: 450px;
+      border: none;
+    }
+    .title {
+      background: #eaeaea;
+      padding: 8px;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+  <script>
+    function getLatestTropicalTidbitsURL() {
+      const now = new Date();
+      const utcHour = now.getUTCHours();
+      const baseHours = [0, 6, 12, 18];
+      let modelHour = baseHours.reduce((prev, curr) => (utcHour >= curr ? curr : prev), 0);
+      if (utcHour < baseHours[0]) {
+        now.setUTCDate(now.getUTCDate() - 1);
+        modelHour = 18;
+      }
+      const yyyy = now.getUTCFullYear();
+      const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(now.getUTCDate()).padStart(2, '0');
+      const hh = String(modelHour).padStart(2, '0');
+      return `https://www.tropicaltidbits.com/analysis/models/gfs/${yyyy}${mm}${dd}${hh}/gfs_apcpn_us_1.png`;
+    }
+
+    function updateTropicalTidbitsImage() {
+      const img = document.getElementById('tidbits-img');
+      img.src = getLatestTropicalTidbitsURL();
+    }
+
+    async function loadNWSAlerts() {
+      const alertContainer = document.getElementById('nws-alerts');
+      try {
+        const res = await fetch('https://api.weather.gov/alerts/active?area=MA&event=Flood');
+        const data = await res.json();
+        if (data.features.length === 0) {
+          alertContainer.innerHTML = '<p>No active flood alerts.</p>';
+        } else {
+          alertContainer.innerHTML = data.features.map(alert => `
+            <div style="margin-bottom: 10px;">
+              <strong>${alert.properties.event}</strong><br>
+              <small>${new Date(alert.properties.effective).toLocaleString()}</small><br>
+              ${alert.properties.headline}<br>
+              <a href="${alert.properties.uri}" target="_blank">Details</a>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        alertContainer.innerHTML = '<p>Error loading alerts.</p>';
+      }
+    }
+
+    window.onload = () => {
+      updateTropicalTidbitsImage();
+      loadNWSAlerts();
+    };
+  </script>
+</head>
+<body>
+
+  <header>
+    <h1>Boston Weather & Flood Forecast Dashboard</h1>
+  </header>
+
+  <div class="container">
+
+    <div class="widget">
+      <div class="title">Windy.com Rain Forecast</div>
+      <iframe src="https://embed.windy.com/embed2.html?lat=42.36&lon=-71.06&detailLat=42.36&detailLon=-71.06&width=650&height=450&zoom=7&level=surface&overlay=rain"></iframe>
+    </div>
+
+    <div class="widget">
+      <div class="title">Tropical Tidbits GFS Precipitation Forecast</div>
+      <img id="tidbits-img" src="" alt="Precipitation Forecast">
+    </div>
+
+    <div class="widget">
+      <div class="title">NWS Boston Forecast</div>
+      <iframe src="https://mobile.weather.gov/index.php?lat=42.36&lon=-71.06"></iframe>
+    </div>
+
+    <div class="widget">
+      <div class="title">Flood Alerts (Live from NWS)</div>
+      <div id="nws-alerts" style="padding: 10px; font-size: 0.9em;"></div>
+    </div>
+
+  </div>
+
+</body>
+</html>
